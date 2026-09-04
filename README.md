@@ -32,6 +32,10 @@ Practical patterns and architectural recipes for common plugin needs:
 - **Graceful Loading Pattern** — handle partial config states with friendly guidance messages
 - **Vanilla JavaScript Plugin Pattern** — build plugins without a framework using the subscription API
 
+## Plugins
+
+The [`plugins/`](./plugins) folder holds actual plugin projects built with these skills, starting with [`plugins/starter`](./plugins/starter) — a Vite + React + TypeScript base that renders an inspector of whatever workbook element you bind to it. Copy it to start a new plugin; see [`plugins/README.md`](./plugins/README.md) for the dev and deploy loop.
+
 ## Usage
 
 These are Claude agent skills — they are read and followed by Claude at the start of relevant tasks. Place the `.claude/skills/` folder in your project or reference it from your Claude configuration.

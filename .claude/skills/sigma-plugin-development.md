@@ -228,6 +228,27 @@ client.config.configureEditorPanel([
 ]);
 ```
 
+### TypeScript: Annotate the Config Array
+
+`CustomPluginConfigOptions` is a union discriminated on `type`. Pulling the
+array into a `const` without annotating it widens each `type` to `string`, and
+the array stops matching the union:
+
+```typescript
+// Error: Type 'string' is not assignable to type '"toggle"'
+const panel = [{ name: 'source', type: 'element' }];
+useEditorPanelConfig(panel);
+```
+
+Annotate it (or inline the literal at the call site, where it is contextually
+typed and needs nothing extra):
+
+```typescript
+import type { CustomPluginConfigOptions } from '@sigmacomputing/plugin';
+
+const panel: CustomPluginConfigOptions[] = [{ name: 'source', type: 'element' }];
+```
+
 ### Config Entry Properties Reference
 
 | Property | Type | Applicable To | Description |
@@ -367,7 +388,30 @@ columns[columnId] = {
 }
 ```
 
-**Column types observed across plugins:** `'text'`, `'number'`, `'integer'`, `'datetime'`, `'date'`, `'boolean'`, `'binary'`, `'string'`
+**Column types declared by the SDK** (the `ValueType` union, as of `@sigmacomputing/plugin` 1.3.2): `'text'`, `'number'`, `'integer'`, `'datetime'`, `'boolean'`, `'variant'`, `'link'`, `'error'`
+
+**Additional values observed at runtime, not in the published union:** `'date'`, `'binary'`, `'string'`
+
+Because the runtime set is wider than the declared union, comparing `columnType`
+against a value outside `ValueType` is a TypeScript error. Widen it at the
+comparison site rather than casting the whole column:
+
+```typescript
+const columnType: string = column?.columnType ?? '';
+if (columnType === 'date' || columnType === 'datetime') { /* ... */ }
+```
+
+**The `format` field is not in the published types.** `WorkbookElementColumn`
+declares only `{ id, name, columnType }`, but Sigma does send `format` at
+runtime. Declare it yourself as an optional extension:
+
+```typescript
+import type { WorkbookElementColumn } from '@sigmacomputing/plugin';
+
+type ColumnInfo = WorkbookElementColumn & {
+  format?: { type?: string; format?: string };
+};
+```
 
 **Format types for the `format.type` property:** `'number'`, `'currency'`, `'percent'`, `'date'`, `'auto'`, `'compact'`
 - `number` — numeric format (the `format.format` string controls decimals, prefix, suffix via d3-format)
@@ -624,10 +668,26 @@ client.style.subscribe((pluginStyle) => {
 Show a loading indicator within the Sigma element while your plugin initializes:
 
 ```javascript
-client.setLoadingState(true);
+client.config.setLoadingState(true);
 // ... load data, initialize chart ...
-client.setLoadingState(false);
+client.config.setLoadingState(false);
 ```
+
+Note it lives on `client.config`, not on `client` directly.
+
+In React, prefer the dedicated hook:
+
+```javascript
+import { useLoadingState } from '@sigmacomputing/plugin';
+
+const [isLoading, setLoading] = useLoadingState(false);
+
+// Write-only is the common case
+const [, setLoading] = useLoadingState(false);
+```
+
+Only signal loading once a source is actually configured — spinning while the
+plugin is unconfigured hides your own setup instructions from the author.
 
 ### URL Parameters
 
@@ -661,7 +721,14 @@ import {
   useElementColumns,     // Get column metadata
   useVariable,           // Read/write control variables
   useActionTrigger,      // Trigger workbook actions (plugin → workbook)
-  useActionEffect        // Receive workbook actions (workbook → plugin)
+  useActionEffect,       // Receive workbook actions (workbook → plugin)
+  useLoadingState,       // Show/hide the element's loading indicator
+  useInteraction,        // Read/write selection state
+  useUrlParameter,       // Read/write a URL parameter
+  usePluginStyle,        // Subscribe to workbook theme/style
+  usePlugin,             // Access the underlying PluginInstance
+  usePaginatedElementData,    // Data in 25k-row pages
+  useIncrementalElementData   // Data streamed in chunks
 } from '@sigmacomputing/plugin';
 ```
 
@@ -709,7 +776,7 @@ client.style.get()                                              // Returns Promi
 client.style.subscribe(callback)                                // Subscribe to style changes
 
 // --- Lifecycle ---
-client.setLoadingState(boolean)                                 // Show/hide loading indicator
+client.config.setLoadingState(boolean)                          // Show/hide loading indicator
 client.destroy()                                                // Cleanup all subscribers
 ```
 
@@ -722,8 +789,28 @@ client.destroy()                                                // Cleanup all s
 | `useElementData(sourceId)` | `{ [colId]: value[] }` | Column-oriented data from the specified element |
 | `useElementColumns(sourceId)` | `{ [colId]: ColumnInfo }` | Column metadata (name, columnType, format) |
 | `useVariable(variableId)` | `[value, setValue]` | Bidirectional variable binding; setter is async |
-| `useActionTrigger(triggerId)` | `function \| null` | Async function to trigger a workbook action |
+| `useActionTrigger(triggerId)` | `() => void` | Triggers a workbook action |
 | `useActionEffect(effectId, callback)` | `void` | Registers callback invoked by workbook action |
+| `useLoadingState(initial)` | `[boolean, (next: boolean) => void]` | Show/hide the element's loading indicator |
+| `useInteraction(configId, elementId)` | `[unknown, Function]` | Read/write selection state |
+| `useUrlParameter(configId)` | `[UrlParameter \| undefined, (v: string) => void]` | Read/write a URL parameter |
+| `usePluginStyle()` | `PluginStyle \| undefined` | Workbook theme/style, kept in sync |
+| `usePlugin()` | `PluginInstance` | Escape hatch to the underlying client |
+| `usePaginatedElementData(sourceId)` | `[data, fetchMore]` | Data in 25,000-row pages |
+| `useIncrementalElementData(sourceId)` | `[data, fetchMore, info]` | Data streamed in chunks, plus progress info |
+
+Signatures above are from `@sigmacomputing/plugin` 1.3.2's own type
+declarations. Two notes where the types are looser than they look:
+
+- `useActionTrigger` is declared as always returning a function, not
+  `function | null`. Guarding with `if (trigger)` is still harmless, and
+  the return is typed `void` rather than a Promise — don't rely on
+  `await` telling you the action finished.
+- `useConfig(key?)` returns `any`, so nothing stops you reading a key you
+  never declared in the editor panel. Narrow it yourself at the call site.
+
+`useElementData` caps out at 25,000 data points. Reach for
+`usePaginatedElementData` or `useIncrementalElementData` past that.
 
 ---
 
