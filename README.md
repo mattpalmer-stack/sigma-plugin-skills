@@ -34,7 +34,7 @@ Practical patterns and architectural recipes for common plugin needs:
 
 ## Plugins
 
-The [`plugins/`](./plugins) folder holds actual plugin projects built with these skills, starting with [`plugins/starter`](./plugins/starter) — a Vite + React + TypeScript base that renders an inspector of whatever workbook element you bind to it. Copy it to start a new plugin; see [`plugins/README.md`](./plugins/README.md) for the dev and deploy loop.
+The [`plugins/`](./plugins) folder holds actual plugin projects built with these skills. First up: [`plugins/disease-reaction-card`](./plugins/disease-reaction-card) — a Vite + React + TypeScript plugin that renders a seed variety card's disease reaction ratings as segmented 1–9 scale bars, split by parent line. See [`plugins/README.md`](./plugins/README.md) for the editor panel, rating bands, and the dev and deploy loop.
 
 ## Usage
 

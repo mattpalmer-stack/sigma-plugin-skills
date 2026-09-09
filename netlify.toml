@@ -1,10 +1,10 @@
 # Netlify build config for the Sigma plugin.
 #
 # `publish` is resolved relative to `base`, so this deploys
-# plugins/starter/dist. Point `base` at a different plugin folder to
+# plugins/disease-reaction-card/dist. Point `base` at a different plugin folder to
 # deploy that one instead, or give each plugin its own Netlify site.
 [build]
-  base = "plugins/starter"
+  base = "plugins/disease-reaction-card"
   command = "npm run build"
   publish = "dist"
 

@@ -4,34 +4,70 @@ Sigma plugin projects built with the skills in `.claude/skills/`.
 
 | Plugin | What it does |
 |--------|--------------|
-| [`starter/`](./starter) | Vite + React + TypeScript base. Renders an inspector of whatever element you bind to it — every column's name, type, format, and sample values. |
+| [`disease-reaction-card/`](./disease-reaction-card) | Renders a seed variety card's disease reaction ratings as segmented 1–9 scale bars, split by parent line and grouped by disease group. |
 
-## Starting a new plugin
+## disease-reaction-card
+
+Reproduces the printed variety card that Sigma's native tables can't: each
+disease gets a bar per parent, filled to its rating and colored by band.
+
+**Editor panel**
+
+| Field | Purpose |
+|---|---|
+| `source` | Element supplying the ratings |
+| `group` | Disease group — consecutive equal values become one spanning tab |
+| `disease` | Row label. The only column the card can't render without |
+| `female` / `male` | Ratings per parent line, numeric |
+| `title` | Card heading |
+| `femaleLabel` / `maleLabel` | Column header text |
+| `maxRating` | Segments per bar, default 9 |
+| `showLegend` | Legend on/off |
+| `showValues` | Print the numeric rating beside each bar |
+
+**Bands** — boundaries sit on the half-step so a fractional average lands in
+exactly one band:
+
+| Rating | Band | Color |
+|---|---|---|
+| 1–3 | Susceptible | `#D93318` |
+| 4 | Moderately susceptible | `#F59120` |
+| 5–6 | Moderately tolerant | `#FFD616` |
+| 7–9 | Tolerant | `#3E9C35` |
+| blank | No info | `#C9CDD4` |
+
+Colors were checked with the dataviz palette validator. The printed card's
+red/orange pair sat at ΔE 14.8 — below the floor where even full-color readers
+can separate two hues — so red was deepened until the pair cleared it (now
+ΔE 17.0 normal, 13.9 deutan). Fill length carries the same value as hue, so a
+rating stays readable when color doesn't survive.
+
+**Row order** comes from the source element. Groups are formed from *runs* of
+equal values rather than distinct ones, so the card follows whatever sort the
+element applies instead of imposing its own — sort in Sigma to reorder.
+
+## Starting another plugin
 
 ```bash
-cp -r starter my-plugin
+cp -r disease-reaction-card my-plugin
 cd my-plugin
 # update "name" in package.json
 npm install
 npm run dev
 ```
 
-Then edit `src/editorPanel.ts` to declare the config the plugin needs, and
-replace the body of `src/App.tsx`. The pieces around it — `useRows`, `format`,
-and `types` — are useful for most plugins and worth keeping.
+Edit `src/editorPanel.ts` for the config it needs, then replace `src/App.tsx`.
+`src/types.ts` is worth keeping — it builds on the SDK's own types instead of
+restating them.
 
 ## Running against a workbook
 
-A plugin is a web page Sigma loads in an iframe, so Sigma needs a URL it can
-reach.
-
 1. `npm run dev` (serves on `http://localhost:5173`)
-2. In Sigma: **Administration → Plugins → Add Plugin**, and enter that URL
-3. In the workbook, add the plugin element to a page
-4. Open its editor panel and set **source** to the element you want to read
+2. In Sigma: **Administration → Plugins → Add Plugin**, enter that URL
+3. Add the plugin element to a page, then map the editor panel fields
 
-Edits hot-reload straight into the workbook. Note that `localhost` only works
-for whoever is running the dev server — for anyone else, deploy first.
+Edits hot-reload into the workbook. `localhost` only works for whoever runs the
+dev server — deploy for anyone else.
 
 ## Deploying
 
@@ -39,21 +75,18 @@ for whoever is running the dev server — for anyone else, deploy first.
 npm run build   # typechecks, then emits dist/
 ```
 
-`dist/` is a static bundle; any static host works (Vercel, Netlify, S3 +
-CloudFront, GitHub Pages). Register the deployed URL the same way, then point
-the workbook's plugin element at it.
+`dist/` is a static bundle; any static host works. `netlify.toml` at the repo
+root builds this folder on push. For a prebuilt zip upload, `public/_headers`
+carries the same headers, since `netlify.toml` only applies to git builds.
 
 `vite.config.ts` sets `base: './'` so assets resolve relative to wherever the
-bundle ends up, rather than assuming it sits at a domain root.
+bundle lands rather than assuming a domain root.
 
 ## Notes
 
-- **Data arrives column-oriented** — `{ [columnId]: values[] }`, keyed by
-  opaque column IDs rather than display names. `useRows` pivots this to rows.
+- **Data arrives column-oriented** — `{ [columnId]: values[] }`, keyed by opaque
+  column IDs, not display names.
 - **`useElementData` caps at 25,000 data points.** Past that, use
   `usePaginatedElementData` or `useIncrementalElementData`.
-- **Dates are inconsistent** — a `Date`, an ISO string, or a timestamp in
-  either seconds or milliseconds, depending on the source. `src/format.ts`
-  normalizes all four.
 - **Dependencies are pinned exactly**, so a fresh `npm install` reproduces the
-  build that was actually tested.
+  build that was tested.
