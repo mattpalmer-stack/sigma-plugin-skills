@@ -1,0 +1,34 @@
+# Netlify build config for the Sigma plugin.
+#
+# `publish` is resolved relative to `base`, so this deploys
+# plugins/starter/dist. Point `base` at a different plugin folder to
+# deploy that one instead, or give each plugin its own Netlify site.
+[build]
+  base = "plugins/starter"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# A Sigma plugin is loaded in an iframe, so it must stay embeddable.
+# Naming Sigma explicitly keeps it working there while stopping any other
+# site from framing it; Netlify sets no CSP otherwise, which would allow
+# anyone to embed.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "frame-ancestors https://app.sigmacomputing.com https://*.sigmacomputing.com"
+    X-Content-Type-Options = "nosniff"
+
+# Hashed assets are immutable; the entry HTML must not be cached or the
+# workbook keeps loading a stale plugin after each deploy.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
