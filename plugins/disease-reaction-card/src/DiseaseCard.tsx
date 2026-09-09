@@ -72,8 +72,11 @@ export function DiseaseCard({
           </tr>
         </thead>
 
-        {groups.map((group) => (
-          <tbody key={group.group}>
+        {groups.map((group, groupIndex) => (
+          // Index, not group name: a group name can legitimately recur if the
+          // caller's ordering interleaves them, and duplicate keys would make
+          // React reuse the wrong tbody.
+          <tbody key={`${groupIndex}-${group.group}`}>
             {group.rows.map((row, index) => (
               <tr key={`${row.group}-${row.disease}`}>
                 {index === 0 && (

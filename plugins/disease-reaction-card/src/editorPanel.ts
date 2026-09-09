@@ -42,6 +42,13 @@ export const EDITOR_PANEL: CustomPluginConfigOptions[] = [
   { name: 'title', type: 'text', label: 'Title', defaultValue: 'Disease Reaction' },
   { name: 'femaleLabel', type: 'text', label: 'Female column header', defaultValue: 'Female' },
   { name: 'maleLabel', type: 'text', label: 'Male column header', defaultValue: 'Male' },
+  {
+    name: 'groupOrder',
+    type: 'text',
+    label: 'Group order (comma separated)',
+    placeholder: 'Seedling, Stalk, Foliar, Ear',
+    defaultValue: '',
+  },
   { name: 'maxRating', type: 'text', label: 'Scale maximum', defaultValue: '9' },
   { name: 'showLegend', type: 'toggle', label: 'Show legend', defaultValue: true },
   { name: 'showValues', type: 'toggle', label: 'Show rating numbers', defaultValue: false },
