@@ -49,6 +49,7 @@ body {
 }
 
 .col-group {
+  position: relative;
   width: 26px;
   padding: 0 6px 0 0;
 }
@@ -113,19 +114,21 @@ body {
 
 /* ---------- group tab ---------- */
 
-/* One rounded tab per group, spanning its rows, with the label reading
-   bottom-to-top like the printed card. */
+/* One rounded tab per group, filling the full height of the rows it spans,
+   with the label reading bottom-to-top like the printed card.
+   Absolutely positioned against the rowspan cell: `height: 100%` on a child of
+   a table cell resolves against the cell's *content* height, not the spanned
+   height, so it collapses to one row instead of covering the group. The 2px
+   vertical inset leaves a gap between neighbouring groups' tabs. */
 .group-tab {
+  position: absolute;
+  inset: 2px 6px 2px 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  min-height: 34px;
-  padding: 6px 0;
   background: var(--tab);
   border-radius: 999px;
-  /* A long group name in a one-row group would otherwise push the tab past its
-     rows and drag the whole table taller. */
+  /* A long group name in a one-row group would otherwise overflow the tab. */
   overflow: hidden;
 }
 
