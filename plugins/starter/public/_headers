@@ -1,0 +1,15 @@
+# Mirrors the headers in the repo-root netlify.toml.
+#
+# netlify.toml only applies to git-based builds; a prebuilt zip deploy reads
+# this file from the publish directory instead. Vite copies public/ into
+# dist/ verbatim, so both deploy paths end up with the same headers.
+
+/*
+  Content-Security-Policy: frame-ancestors https://app.sigmacomputing.com https://*.sigmacomputing.com
+  X-Content-Type-Options: nosniff
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/index.html
+  Cache-Control: no-cache
