@@ -1,5 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { client, useConfig, useElementColumns, useElementData } from '@sigmacomputing/plugin';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  client,
+  useActionTrigger,
+  useConfig,
+  useElementColumns,
+  useElementData,
+  useVariable,
+} from '@sigmacomputing/plugin';
 import { GoogleMap } from './components/GoogleMap';
 import { Legend } from './components/Legend';
 import { TableView } from './components/TableView';
@@ -8,6 +15,7 @@ import { DEFAULT_MAP_STYLE, MAP_STYLE_NAMES, mapStyleFor } from './lib/mapStyles
 import { themeFor } from './lib/palette';
 import { buildTerritoryScale } from './lib/territories';
 import { buildPoints, columnName } from './lib/rows';
+import { formatterFor } from './lib/format';
 import type { MapPoint, PluginConfig, SigmaColumns, SigmaData } from './types';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
@@ -48,6 +56,30 @@ client.config.configureEditorPanel([
     label: 'Territory name',
   },
   {
+    name: 'ytdSales',
+    type: 'column',
+    source: 'source',
+    allowMultiple: false,
+    allowedTypes: ['number', 'integer'],
+    label: 'YTD Sales',
+  },
+  {
+    name: 'pytdSales',
+    type: 'column',
+    source: 'source',
+    allowMultiple: false,
+    allowedTypes: ['number', 'integer'],
+    label: 'PYTD Sales',
+  },
+  {
+    name: 'growthPct',
+    type: 'column',
+    source: 'source',
+    allowMultiple: false,
+    allowedTypes: ['number', 'integer'],
+    label: 'Growth % (optional)',
+  },
+  {
     name: 'mapStyle',
     type: 'dropdown',
     source: 'source',
@@ -55,6 +87,17 @@ client.config.configureEditorPanel([
     defaultValue: DEFAULT_MAP_STYLE,
     label: 'Map style',
   },
+  // --- Territory writeback ---
+  {
+    name: 'rowKey',
+    type: 'column',
+    source: 'source',
+    allowMultiple: false,
+    label: 'Row key (writeback)',
+  },
+  { name: 'selectedKey', type: 'variable', label: 'Row key → variable' },
+  { name: 'newTerritory', type: 'variable', label: 'New territory → variable' },
+  { name: 'onTerritoryChange', type: 'action-trigger', label: 'On territory change' },
 ]);
 
 type View = 'map' | 'table';
@@ -64,7 +107,14 @@ export default function App() {
   const data = useElementData(config.source ?? '') as SigmaData;
   const columns = useElementColumns(config.source ?? '') as SigmaColumns;
 
-  const [selectedRow, setSelectedRow] = useState<number | null>(null);
+  // Write-only: the workbook owns these once set.
+  const [, setKeyVar] = useVariable(config.selectedKey ?? '');
+  const [, setTerritoryVar] = useVariable(config.newTerritory ?? '');
+  const triggerTerritoryChange = useActionTrigger(config.onTerritoryChange ?? '');
+
+  // Selection is held by the row's key, not its index: writeback reorders the
+  // source rows, and an index would silently start pointing at a different row.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [view, setView] = useState<View>('map');
 
   const theme = themeFor(mapStyleFor(config.mapStyle).mode);
@@ -79,19 +129,86 @@ export default function App() {
       lngColumn: config.longitude,
       nameColumn: config.restaurantName,
       territoryColumn: config.territory,
+      keyColumn: config.rowKey,
+      ytdColumn: config.ytdSales,
+      pytdColumn: config.pytdSales,
+      growthColumn: config.growthPct,
     });
-  }, [data, config.source, config.latitude, config.longitude, config.restaurantName, config.territory]);
+  }, [
+    data,
+    config.source,
+    config.latitude,
+    config.longitude,
+    config.restaurantName,
+    config.territory,
+    config.rowKey,
+    config.ytdSales,
+    config.pytdSales,
+    config.growthPct,
+  ]);
 
   const scale = useMemo(() => buildTerritoryScale(points, theme), [points, theme]);
 
-  const nameHeader = columnName(columns, config.restaurantName);
-  const territoryHeader = columnName(columns, config.territory);
+  /**
+   * Every distinct territory in the current rows — taken from the data rather
+   * than the colour scale, so a territory folded into "Other" is still a
+   * reassignment target.
+   */
+  const territoryOptions = useMemo(
+    () =>
+      [...new Set(points.map((p) => p.territory.trim()).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [points],
+  );
 
-  // Drop a stale selection when the underlying rows change.
+  const labels = useMemo(
+    () => ({
+      name: columnName(columns, config.restaurantName),
+      territory: columnName(columns, config.territory) || 'Territory',
+      ytd: columnName(columns, config.ytdSales) || 'YTD Sales',
+      pytd: columnName(columns, config.pytdSales) || 'PYTD Sales',
+      growth: columnName(columns, config.growthPct) || 'Growth %',
+    }),
+    [columns, config.restaurantName, config.territory, config.ytdSales, config.pytdSales, config.growthPct],
+  );
+
+  const formatters = useMemo(
+    () => ({
+      ytd: formatterFor(config.ytdSales ? columns[config.ytdSales] : undefined),
+      pytd: formatterFor(config.pytdSales ? columns[config.pytdSales] : undefined),
+    }),
+    [columns, config.ytdSales, config.pytdSales],
+  );
+
+  const writebackReady = Boolean(
+    config.selectedKey && config.newTerritory && config.onTerritoryChange,
+  );
+
+  /**
+   * Publish the change for the workbook to act on: the variables carry which
+   * row and which territory, the action trigger tells Sigma to run the update.
+   */
+  const handleTerritoryChange = useCallback(
+    async (point: MapPoint, next: string) => {
+      if (config.selectedKey) await setKeyVar(String(point.key));
+      if (config.newTerritory) await setTerritoryVar(String(next));
+      if (triggerTerritoryChange) await triggerTerritoryChange();
+    },
+    [
+      config.selectedKey,
+      config.newTerritory,
+      setKeyVar,
+      setTerritoryVar,
+      triggerTerritoryChange,
+    ],
+  );
+
+  // Drop a stale selection when the row it pointed at is no longer present.
   useEffect(() => {
-    if (selectedRow === null) return;
-    if (!points.some((p) => p.rowIndex === selectedRow)) setSelectedRow(null);
-  }, [points, selectedRow]);
+    if (selectedKey === null) return;
+    if (!points.some((p) => p.key === selectedKey)) setSelectedKey(null);
+  }, [points, selectedKey]);
 
   if (!API_KEY) {
     return (
@@ -184,22 +301,25 @@ export default function App() {
               theme={theme}
               scale={scale}
               mapStyle={config.mapStyle}
-              nameLabel={nameHeader}
-              territoryLabel={territoryHeader}
-              selectedRow={selectedRow}
-              onSelect={setSelectedRow}
+              labels={labels}
+              formatters={formatters}
+              territoryOptions={territoryOptions}
+              writebackReady={writebackReady}
+              selectedKey={selectedKey}
+              onSelect={setSelectedKey}
+              onTerritoryChange={(point, next) => void handleTerritoryChange(point, next)}
             />
-            <Legend theme={theme} scale={scale} title={territoryHeader || 'Territory'} />
+            <Legend theme={theme} scale={scale} title={labels.territory} />
           </>
         ) : (
           <TableView
             points={points}
             theme={theme}
             scale={scale}
-            nameHeader={nameHeader}
-            territoryHeader={territoryHeader}
-            selectedRow={selectedRow}
-            onSelect={setSelectedRow}
+            labels={labels}
+            formatters={formatters}
+            selectedKey={selectedKey}
+            onSelect={setSelectedKey}
           />
         )}
       </main>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
 import { mapStyleFor } from '../lib/mapStyles';
+import { formatGrowth } from '../lib/format';
 import type { Theme } from '../lib/palette';
 import type { TerritoryScale } from '../lib/territories';
 import type { MapPoint } from '../types';
@@ -80,20 +81,101 @@ function popupRow(label: string, value: string, theme: Theme): HTMLElement {
   return row;
 }
 
-function buildPopup(
-  point: MapPoint,
-  theme: Theme,
-  color: string,
-  territoryLabel: string,
-  nameLabel: string,
-): HTMLElement {
+export interface PopupLabels {
+  name: string;
+  territory: string;
+  ytd: string;
+  pytd: string;
+  growth: string;
+}
+
+export interface PopupFormatters {
+  ytd: (value: number) => string;
+  pytd: (value: number) => string;
+}
+
+export interface PopupOptions {
+  point: MapPoint;
+  theme: Theme;
+  color: string;
+  labels: PopupLabels;
+  formatters: PopupFormatters;
+  /** Territories the author may reassign this row to. */
+  territoryOptions: string[];
+  /** False until the writeback variables and action trigger are configured. */
+  writebackReady: boolean;
+  onTerritoryChange: (point: MapPoint, next: string) => void;
+}
+
+/** The "New Territory" control that drives writeback into the input table. */
+function buildTerritoryPicker(options: PopupOptions): HTMLElement | null {
+  const { point, theme, labels, territoryOptions, writebackReady, onTerritoryChange } = options;
+  if (territoryOptions.length === 0) return null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'popup-control';
+
+  const label = document.createElement('label');
+  label.className = 'popup-control-label';
+  label.style.color = theme.textMuted;
+  label.textContent = 'New Territory';
+  const selectId = `territory-${point.rowIndex}`;
+  label.htmlFor = selectId;
+
+  const select = document.createElement('select');
+  select.id = selectId;
+  select.className = 'popup-select';
+  select.style.color = theme.textPrimary;
+  select.style.background = theme.surface;
+  select.style.borderColor = theme.border;
+  select.disabled = !writebackReady;
+
+  // The row's current territory leads the list, so the control shows present
+  // state rather than implying a change has already been made.
+  const current = point.territory.trim();
+  if (!current) {
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = `— ${labels.territory || 'Territory'} —`;
+    select.append(placeholder);
+  }
+  for (const name of territoryOptions) {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    option.selected = name === current;
+    select.append(option);
+  }
+
+  select.addEventListener('change', () => {
+    const next = select.value;
+    if (!next || next === current) return;
+    onTerritoryChange(point, next);
+  });
+
+  wrap.append(label, select);
+
+  if (!writebackReady) {
+    const hint = document.createElement('div');
+    hint.className = 'popup-hint';
+    hint.style.color = theme.textMuted;
+    hint.textContent = 'Set the writeback variables and action in the editor panel to enable.';
+    wrap.append(hint);
+  }
+
+  return wrap;
+}
+
+export function buildPopup(options: PopupOptions): HTMLElement {
+  const { point, theme, color, labels, formatters } = options;
+
   const root = document.createElement('div');
   root.className = `map-popup ${theme.mode}`;
 
   const title = document.createElement('div');
   title.className = 'popup-title';
   title.style.color = theme.textPrimary;
-  title.textContent = point.name || nameLabel || `Row ${point.rowIndex + 1}`;
+  title.textContent = point.name || labels.name || `Row ${point.rowIndex + 1}`;
   root.append(title);
 
   if (point.territory) {
@@ -118,11 +200,31 @@ function buildPopup(
   rule.style.background = theme.gridline;
   root.append(rule);
 
-  if (territoryLabel && !point.territory) {
-    root.append(popupRow(territoryLabel, '—', theme));
+  root.append(
+    popupRow(labels.ytd, point.ytd === null ? '—' : formatters.ytd(point.ytd), theme),
+    popupRow(labels.pytd, point.pytd === null ? '—' : formatters.pytd(point.pytd), theme),
+  );
+
+  const growthRow = popupRow(
+    labels.growth,
+    point.growth === null ? '—' : formatGrowth(point.growth, point.growthIsRatio),
+    theme,
+  );
+  if (point.growth !== null && point.growth !== 0) {
+    const value = growthRow.querySelector<HTMLElement>('.popup-value');
+    // The sign is printed in the text, so colour reinforces direction here
+    // rather than being the only thing carrying it.
+    if (value) value.style.color = point.growth > 0 ? theme.deltaUp : theme.deltaDown;
   }
-  root.append(popupRow('Latitude', point.lat.toFixed(6), theme));
-  root.append(popupRow('Longitude', point.lng.toFixed(6), theme));
+  root.append(growthRow);
+
+  const picker = buildTerritoryPicker(options);
+  if (picker) {
+    const rule2 = document.createElement('div');
+    rule2.className = 'popup-rule';
+    rule2.style.background = theme.gridline;
+    root.append(rule2, picker);
+  }
 
   return root;
 }
@@ -133,10 +235,13 @@ interface GoogleMapProps {
   theme: Theme;
   scale: TerritoryScale;
   mapStyle: string | undefined;
-  nameLabel: string;
-  territoryLabel: string;
-  selectedRow: number | null;
-  onSelect: (rowIndex: number | null) => void;
+  labels: PopupLabels;
+  formatters: PopupFormatters;
+  territoryOptions: string[];
+  writebackReady: boolean;
+  selectedKey: string | null;
+  onSelect: (key: string | null) => void;
+  onTerritoryChange: (point: MapPoint, next: string) => void;
 }
 
 export function GoogleMap({
@@ -145,10 +250,13 @@ export function GoogleMap({
   theme,
   scale,
   mapStyle,
-  nameLabel,
-  territoryLabel,
-  selectedRow,
+  labels,
+  formatters,
+  territoryOptions,
+  writebackReady,
+  selectedKey,
   onSelect,
+  onTerritoryChange,
 }: GoogleMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -159,12 +267,17 @@ export function GoogleMap({
 
   const [loadState, setLoadState] = useState<LoadState>('loading');
 
-  // `onSelect` changes identity between renders; hold it in a ref so the marker
-  // effect does not rebuild every marker just to stay current.
+  // These callbacks change identity between renders; hold them in refs so the
+  // marker effect does not rebuild every marker just to stay current.
   const onSelectRef = useRef(onSelect);
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  const onTerritoryChangeRef = useRef(onTerritoryChange);
+  useEffect(() => {
+    onTerritoryChangeRef.current = onTerritoryChange;
+  }, [onTerritoryChange]);
 
   // Boot the Maps API and create the map once.
   useEffect(() => {
@@ -255,7 +368,7 @@ export function GoogleMap({
           : undefined,
       });
 
-      marker.addListener('click', () => onSelectRef.current(point.rowIndex));
+      marker.addListener('click', () => onSelectRef.current(point.key));
       markersRef.current.set(point.rowIndex, marker);
     }
 
@@ -282,11 +395,12 @@ export function GoogleMap({
     const info = infoRef.current;
     if (!map || !info || loadState !== 'ready') return;
 
+    const selectedPoint = selectedKey === null ? undefined : points.find((p) => p.key === selectedKey);
+
     for (const [rowIndex, marker] of markersRef.current) {
-      const style = scale.styleFor(
-        points.find((p) => p.rowIndex === rowIndex)?.territory ?? '',
-      );
-      const isSelected = rowIndex === selectedRow;
+      const point = points.find((p) => p.rowIndex === rowIndex);
+      const style = scale.styleFor(point?.territory ?? '');
+      const isSelected = selectedPoint !== undefined && rowIndex === selectedPoint.rowIndex;
       marker.setIcon({
         path: google.maps.SymbolPath.CIRCLE,
         scale: isSelected ? SELECTED_MARKER_SCALE : MARKER_SCALE,
@@ -298,23 +412,42 @@ export function GoogleMap({
       marker.setZIndex(isSelected ? 1000 : undefined);
     }
 
-    if (selectedRow === null) {
+    if (!selectedPoint) {
       info.close();
       return;
     }
 
-    const point = points.find((p) => p.rowIndex === selectedRow);
-    const marker = markersRef.current.get(selectedRow);
-    if (!point || !marker) {
+    const point = selectedPoint;
+    const marker = markersRef.current.get(point.rowIndex);
+    if (!marker) {
       info.close();
       return;
     }
 
     info.setContent(
-      buildPopup(point, theme, scale.styleFor(point.territory).color, territoryLabel, nameLabel),
+      buildPopup({
+        point,
+        theme,
+        color: scale.styleFor(point.territory).color,
+        labels,
+        formatters,
+        territoryOptions,
+        writebackReady,
+        onTerritoryChange: (p, next) => onTerritoryChangeRef.current(p, next),
+      }),
     );
     info.open({ map, anchor: marker });
-  }, [selectedRow, points, scale, theme, loadState, nameLabel, territoryLabel]);
+  }, [
+    selectedKey,
+    points,
+    scale,
+    theme,
+    loadState,
+    labels,
+    formatters,
+    territoryOptions,
+    writebackReady,
+  ]);
 
   if (loadState === 'error') {
     return (

@@ -1,3 +1,4 @@
+import { computeGrowth } from './format';
 import type { MapPoint, SigmaColumns, SigmaData, SigmaValue } from '../types';
 
 /** Coerce a Sigma cell to a number, or null when it isn't one. */
@@ -28,6 +29,10 @@ export interface BuildPointsArgs {
   lngColumn: string;
   nameColumn?: string;
   territoryColumn?: string;
+  keyColumn?: string;
+  ytdColumn?: string;
+  pytdColumn?: string;
+  growthColumn?: string;
 }
 
 export interface BuildPointsResult {
@@ -49,6 +54,10 @@ export function buildPoints({
   lngColumn,
   nameColumn,
   territoryColumn,
+  keyColumn,
+  ytdColumn,
+  pytdColumn,
+  growthColumn,
 }: BuildPointsArgs): BuildPointsResult {
   const lats = data[latColumn];
   const lngs = data[lngColumn];
@@ -58,6 +67,10 @@ export function buildPoints({
 
   const names = nameColumn ? data[nameColumn] : undefined;
   const territories = territoryColumn ? data[territoryColumn] : undefined;
+  const keys = keyColumn ? data[keyColumn] : undefined;
+  const ytds = ytdColumn ? data[ytdColumn] : undefined;
+  const pytds = pytdColumn ? data[pytdColumn] : undefined;
+  const growths = growthColumn ? data[growthColumn] : undefined;
 
   const rowCount = Math.min(lats.length, lngs.length);
   const points: MapPoint[] = [];
@@ -74,12 +87,25 @@ export function buildPoints({
       continue;
     }
 
+    const ytd = ytds ? toNumber(ytds[i]) : null;
+    const pytd = pytds ? toNumber(pytds[i]) : null;
+    const suppliedGrowth = growths ? toNumber(growths[i]) : null;
+    const useSupplied = growths !== undefined && suppliedGrowth !== null;
+
     points.push({
       rowIndex: i,
       lat,
       lng,
       name: toText(names?.[i]),
       territory: toText(territories?.[i]),
+      // Falls back to the row index so writeback still identifies a row when no
+      // key column is configured — a workbook-side match on index is fragile,
+      // which is why the editor panel asks for a real key.
+      key: keys ? toText(keys[i]) : String(i),
+      ytd,
+      pytd,
+      growth: useSupplied ? suppliedGrowth : computeGrowth(ytd, pytd),
+      growthIsRatio: !useSupplied,
     });
   }
 

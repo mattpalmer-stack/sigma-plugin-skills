@@ -10,9 +10,11 @@ specific to restaurants — the author picks every column from the editor panel.
 
 - One marker per row, positioned by the chosen latitude/longitude columns.
 - Markers coloured by the chosen territory column.
-- Click a marker for a popup with the name, territory, and exact coordinates.
+- Click a marker for a popup showing the name, territory, YTD Sales, PYTD Sales,
+  and Growth %, plus a **New Territory** picker that writes the change back to
+  the workbook.
 - The map auto-fits to the plotted rows on load and whenever the coordinates change.
-- A **Table** toggle shows the same rows as text.
+- A **Table** toggle shows the same fields as text.
 
 ## Editor panel
 
@@ -23,7 +25,23 @@ specific to restaurants — the author picks every column from the editor panel.
 | Longitude | column (number) | yes | Degrees, not formatted text |
 | Restaurant name | column (text) | no | Popup title and table label |
 | Territory name | column (text) | no | Drives marker colour |
+| YTD Sales | column (number) | no | Shown in the popup and table |
+| PYTD Sales | column (number) | no | Shown in the popup and table |
+| Growth % | column (number) | no | If omitted, derived from YTD and PYTD |
 | Map style | dropdown | no | `Light` or `Dark` |
+| Row key (writeback) | column | for writeback | Identifies the row to update |
+| Row key → variable | variable | for writeback | Receives the clicked row's key |
+| New territory → variable | variable | for writeback | Receives the chosen territory |
+| On territory change | action-trigger | for writeback | Fired after both variables are set |
+
+Sales figures use the d3 format string from the column's own metadata, so they
+render exactly as they do elsewhere in the workbook.
+
+Growth is printed with an explicit sign (`+4.2%` / `−1.7%`) and tinted green or
+red. The sign carries the direction on its own, so the colour is reinforcement
+rather than the only cue. A supplied Growth column is treated as already being a
+percentage (`12.4` → `+12.4%`); a derived one is a ratio. Growth is not reported
+when the prior period is zero, since any increase from zero is infinite.
 
 Rows whose coordinates are missing or out of range are dropped rather than
 placed at a guessed location, and the count is reported in the toolbar.
@@ -50,6 +68,29 @@ colour that already means something else.
 
 Slots are assigned in alphabetical order of territory name, so a territory keeps
 its colour when a filter changes which rows are on screen.
+
+## Territory writeback
+
+The plugin does not write to the warehouse itself. It publishes the change and
+lets the workbook act on it, which is what Sigma's action model expects:
+
+1. The author picks a territory in the popup's **New Territory** control.
+2. The plugin sets the **row key** variable to the clicked row's key, and the
+   **new territory** variable to the chosen value.
+3. The plugin fires the **On territory change** action trigger.
+4. In Sigma, attach an action sequence to that trigger that updates the input
+   table row matching the key variable, setting its territory to the territory
+   variable.
+
+Until all three of those are configured, the control renders disabled with a
+note saying so, rather than silently doing nothing.
+
+The picker lists every distinct territory in the current rows, with the row's
+current one preselected. Nothing is written when the selection does not change.
+
+Selection is tracked by the row key rather than the row index, because an update
+can reorder the source rows — an index would quietly start pointing at a
+different restaurant.
 
 ## Google Maps API key
 

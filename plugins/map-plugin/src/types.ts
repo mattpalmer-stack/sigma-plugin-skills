@@ -21,6 +21,16 @@ export interface MapPoint {
   name: string;
   /** Raw territory value; empty string when the row has none. */
   territory: string;
+  /** Value written to the writeback variable so Sigma can find this row again. */
+  key: string;
+  ytd: number | null;
+  pytd: number | null;
+  /**
+   * Growth as supplied by the workbook, or derived from ytd/pytd when no
+   * growth column is configured. `growthIsRatio` says which scale it is on.
+   */
+  growth: number | null;
+  growthIsRatio: boolean;
 }
 
 export interface PluginConfig {
@@ -29,5 +39,12 @@ export interface PluginConfig {
   longitude?: string;
   restaurantName?: string;
   territory?: string;
+  rowKey?: string;
+  ytdSales?: string;
+  pytdSales?: string;
+  growthPct?: string;
   mapStyle?: string;
+  selectedKey?: string;
+  newTerritory?: string;
+  onTerritoryChange?: string;
 }

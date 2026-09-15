@@ -308,6 +308,41 @@ body {
 .popup-value {
   font-variant-numeric: tabular-nums;
   text-align: right;
+  font-weight: 500;
+}
+
+/* "New Territory" writeback control */
+
+.popup-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.popup-control-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.popup-select {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid;
+  border-radius: 6px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.popup-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.popup-hint {
+  font-size: 10.5px;
+  line-height: 1.35;
 }
 
 /* ---------- Google Maps overrides ---------- */
@@ -337,4 +372,23 @@ body {
 
 .gm-style .gm-style-iw-c:has(.map-popup.dark) button span {
   background-color: #c3c2b7 !important;
+}
+
+/* ---------- Dev harness only ---------- */
+
+.popup-preview-rail {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.popup-preview {
+  padding: 10px 12px;
+  border: 1px solid;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }

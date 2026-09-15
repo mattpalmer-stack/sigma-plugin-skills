@@ -7,25 +7,49 @@
  * plain browser. Vite's production build only takes the root `index.html`, so
  * nothing here ships.
  */
-import { StrictMode, useMemo, useState } from 'react';
+import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../src/theme.css';
-import { GoogleMap } from '../src/components/GoogleMap';
+import { GoogleMap, buildPopup } from '../src/components/GoogleMap';
 import { Legend } from '../src/components/Legend';
 import { TableView } from '../src/components/TableView';
 import { themeFor } from '../src/lib/palette';
 import { buildTerritoryScale } from '../src/lib/territories';
 import { buildPoints } from '../src/lib/rows';
 import { mapStyleFor, MAP_STYLE_NAMES } from '../src/lib/mapStyles';
+import { formatterFor } from '../src/lib/format';
 import mock from './mockData.json';
-import type { SigmaData } from '../src/types';
+import type { MapPoint, SigmaColumns, SigmaData } from '../src/types';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
+
+/**
+ * Renders the real popup DOM outside Google Maps.
+ *
+ * The info window is the one surface that cannot be reached without the Maps
+ * API loading, so previewing it here is the only way to check its layout,
+ * number formatting, and the territory control.
+ */
+function PopupPreview(props: Parameters<typeof buildPopup>[0]) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    host.replaceChildren(buildPopup(props));
+  });
+  return (
+    <div
+      className="popup-preview"
+      ref={hostRef}
+      style={{ background: props.theme.surface, borderColor: props.theme.border }}
+    />
+  );
+}
 
 function Harness() {
   const [mapStyle, setMapStyle] = useState<string>('Light');
   const [view, setView] = useState<'map' | 'table'>('map');
-  const [selectedRow, setSelectedRow] = useState<number | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [territoryCap, setTerritoryCap] = useState<number>(99);
 
   const theme = themeFor(mapStyleFor(mapStyle).mode);
@@ -37,6 +61,9 @@ function Harness() {
       lngColumn: 'col-lng',
       nameColumn: 'col-name',
       territoryColumn: 'col-territory',
+      keyColumn: 'col-key',
+      ytdColumn: 'col-ytd',
+      pytdColumn: 'col-pytd',
     });
     // Lets the harness force the ≤3-territory (colour-only) path for comparison.
     const allowed = [...new Set(built.points.map((p) => p.territory))].sort().slice(0, territoryCap);
@@ -49,12 +76,37 @@ function Harness() {
 
   const scale = useMemo(() => buildTerritoryScale(points, theme), [points, theme]);
 
+  const columns = mock.columns as SigmaColumns;
+  const labels = {
+    name: 'Name',
+    territory: 'Territory',
+    ytd: 'YTD Sales',
+    pytd: 'PYTD Sales',
+    growth: 'Growth %',
+  };
+  const formatters = {
+    ytd: formatterFor(columns['col-ytd']),
+    pytd: formatterFor(columns['col-pytd']),
+  };
+  const territoryOptions = useMemo(
+    () =>
+      [...new Set(points.map((p) => p.territory.trim()).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [points],
+  );
+  // The harness has no workbook to write to, so it just reports the call.
+  const [lastWrite, setLastWrite] = useState<string>('');
+  const onTerritoryChange = (point: MapPoint, next: string) =>
+    setLastWrite(`${point.key} → ${next}`);
+
   return (
     <div className="plugin-root" style={{ background: theme.plane, color: theme.textPrimary }}>
       <header className="toolbar" style={{ borderColor: theme.border }}>
         <span className="row-count" style={{ color: theme.textSecondary }}>
           {points.length} locations · {scale.entries.length} territories
           {scale.needsBadges ? ' · badges on' : ' · colour only'}
+          {lastWrite && <span data-testid="last-write"> · wrote {lastWrite}</span>}
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
           <select value={territoryCap} onChange={(e) => setTerritoryCap(Number(e.target.value))}>
@@ -95,22 +147,43 @@ function Harness() {
               theme={theme}
               scale={scale}
               mapStyle={mapStyle}
-              nameLabel="Name"
-              territoryLabel="Territory"
-              selectedRow={selectedRow}
-              onSelect={setSelectedRow}
+              labels={labels}
+              formatters={formatters}
+              territoryOptions={territoryOptions}
+              writebackReady
+              selectedKey={selectedKey}
+              onSelect={setSelectedKey}
+              onTerritoryChange={onTerritoryChange}
             />
             <Legend theme={theme} scale={scale} title="Territory" />
+            <div className="popup-preview-rail">
+              {[0, 1].map((offset) => {
+                const point = points[offset];
+                return point ? (
+                  <PopupPreview
+                    key={point.rowIndex}
+                    point={point}
+                    theme={theme}
+                    color={scale.styleFor(point.territory).color}
+                    labels={labels}
+                    formatters={formatters}
+                    territoryOptions={territoryOptions}
+                    writebackReady={offset === 0}
+                    onTerritoryChange={onTerritoryChange}
+                  />
+                ) : null;
+              })}
+            </div>
           </>
         ) : (
           <TableView
             points={points}
             theme={theme}
             scale={scale}
-            nameHeader="Name"
-            territoryHeader="Territory"
-            selectedRow={selectedRow}
-            onSelect={setSelectedRow}
+            labels={labels}
+            formatters={formatters}
+            selectedKey={selectedKey}
+            onSelect={setSelectedKey}
           />
         )}
       </main>

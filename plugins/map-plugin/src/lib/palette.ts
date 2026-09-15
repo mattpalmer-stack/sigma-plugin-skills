@@ -41,6 +41,13 @@ export interface Theme {
   neutralMark: string;
   /** Ring marking the selected marker. */
   selection: string;
+  /**
+   * Delta ink for growth figures. These are status/delta roles, distinct from
+   * the categorical slots, so a growth figure never impersonates a territory.
+   * The sign is always printed alongside, so colour is never the only cue.
+   */
+  deltaUp: string;
+  deltaDown: string;
 }
 
 export const LIGHT_THEME: Theme = {
@@ -55,6 +62,8 @@ export const LIGHT_THEME: Theme = {
   categorical: CATEGORICAL.light,
   neutralMark: '#898781',
   selection: '#0b0b0b',
+  deltaUp: '#006300',
+  deltaDown: '#d03b3b',
 };
 
 export const DARK_THEME: Theme = {
@@ -69,6 +78,8 @@ export const DARK_THEME: Theme = {
   categorical: CATEGORICAL.dark,
   neutralMark: '#898781',
   selection: '#ffffff',
+  deltaUp: '#0ca30c',
+  deltaDown: '#d03b3b',
 };
 
 export function themeFor(mode: ThemeMode): Theme {
