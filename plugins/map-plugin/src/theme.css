@@ -1,0 +1,335 @@
+/*
+ * Chrome for the plugin. Colours come from the theme object in TS rather than
+ * from CSS variables here, because the basemap choice picks the token set at
+ * runtime; this file owns layout, type, and the Leaflet overrides.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.plugin-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ---------- Toolbar ---------- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid;
+  flex: 0 0 auto;
+}
+
+.row-count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ghost-button {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ghost-button:hover {
+  opacity: 0.75;
+}
+
+.view-switch {
+  display: inline-flex;
+  border: 1px solid;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.view-switch button {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 12px;
+  border: 0;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+/* ---------- Stage ---------- */
+
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.map-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- Legend ---------- */
+
+.legend {
+  position: absolute;
+  left: 12px;
+  bottom: 24px;
+  z-index: 500;
+  display: flex;
+  gap: 18px;
+  padding: 10px 12px;
+  border: 1px solid;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  pointer-events: auto;
+}
+
+.legend-block {
+  min-width: 108px;
+}
+
+.legend-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin-bottom: 6px;
+}
+
+.legend-ramp {
+  display: flex;
+  gap: 2px; /* surface gap keeps adjacent fills separable */
+}
+
+.legend-swatch {
+  flex: 1 1 0;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legend-sizes {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 26px;
+}
+
+.legend-bubble {
+  display: inline-block;
+  border-radius: 50%;
+  border: 2px solid;
+}
+
+.legend-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+
+/* ---------- Table view ---------- */
+
+.table-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 6px 12px;
+  border-bottom: 1px solid;
+  white-space: nowrap;
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: inherit;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.data-table tbody tr {
+  cursor: pointer;
+}
+
+.data-table tbody tr:hover {
+  filter: brightness(0.97);
+}
+
+.data-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table tbody th {
+  font-weight: 500;
+}
+
+.row-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid;
+  margin-right: 8px;
+  vertical-align: baseline;
+}
+
+.row-selected {
+  font-weight: 600;
+}
+
+/* ---------- Empty states ---------- */
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+}
+
+.empty-card {
+  max-width: 380px;
+  padding: 20px 24px;
+  border: 1px solid;
+  border-radius: 10px;
+}
+
+.empty-card h1 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.empty-card ol {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+}
+
+.empty-card li + li {
+  margin-top: 4px;
+}
+
+/* ---------- Tooltip & popup content ---------- */
+
+.popup-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.popup-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.popup-key {
+  white-space: nowrap;
+}
+
+.popup-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.popup-rule {
+  height: 1px;
+  margin: 6px 0;
+}
+
+/* ---------- Leaflet overrides ---------- */
+
+.leaflet-container {
+  font-family: inherit;
+  font-size: 12px;
+  background: transparent;
+}
+
+.map-tooltip-shell,
+.map-popup-shell .leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  padding: 8px 10px;
+}
+
+.map-tooltip-shell.light,
+.map-popup-shell.light .leaflet-popup-content-wrapper,
+.map-popup-shell.light .leaflet-popup-tip {
+  background: #fcfcfb;
+  border: 1px solid rgba(11, 11, 11, 0.1);
+  color: #0b0b0b;
+}
+
+.map-tooltip-shell.dark,
+.map-popup-shell.dark .leaflet-popup-content-wrapper,
+.map-popup-shell.dark .leaflet-popup-tip {
+  background: #1a1a19;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.map-tooltip-shell::before {
+  display: none; /* Leaflet's default arrow does not match the themed border */
+}
+
+.map-popup-shell .leaflet-popup-content {
+  margin: 0;
+  min-width: 160px;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+  background: rgba(252, 252, 251, 0.8) !important;
+}
+
+.map-tooltip-shell.dark ~ .leaflet-control-attribution,
+.leaflet-container .leaflet-control-attribution a {
+  color: #52514e;
+}

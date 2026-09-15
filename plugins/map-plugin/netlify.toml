@@ -1,0 +1,22 @@
+[build]
+  base = "plugins/map-plugin"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Sigma loads the plugin inside an iframe in the workbook, so the response must
+# not carry a frame-blocking header. Netlify sends none by default; these headers
+# are the deliberate, minimal set that keeps framing allowed.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Single-page app: every path serves the same shell.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
