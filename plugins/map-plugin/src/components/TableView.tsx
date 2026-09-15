@@ -1,63 +1,49 @@
-import { bucketIndex, type Extent } from '../lib/scales';
-import { formatCompact } from '../lib/format';
 import type { Theme } from '../lib/palette';
+import type { TerritoryScale } from '../lib/territories';
 import type { MapPoint } from '../types';
 
 interface TableViewProps {
   points: MapPoint[];
   theme: Theme;
-  colorExtent: Extent | null;
-  colorLabel: string;
-  sizeLabel: string;
-  labelHeader: string;
+  scale: TerritoryScale;
+  nameHeader: string;
+  territoryHeader: string;
   selectedRow: number | null;
-  onSelect: (point: MapPoint) => void;
+  onSelect: (rowIndex: number) => void;
 }
 
 /**
- * The table is the non-visual route to the same data — it is what makes the
- * encoding legible when colour is not available to the reader.
+ * The non-visual route to the same data — what makes the encoding legible when
+ * colour is not available to the reader.
  */
 export function TableView({
   points,
   theme,
-  colorExtent,
-  colorLabel,
-  sizeLabel,
-  labelHeader,
+  scale,
+  nameHeader,
+  territoryHeader,
   selectedRow,
   onSelect,
 }: TableViewProps) {
-  const detailNames = points[0]?.details.map((d) => d.name) ?? [];
-
   return (
     <div className="table-wrap" style={{ background: theme.surface }}>
       <table className="data-table">
         <thead>
           <tr style={{ color: theme.textSecondary, borderColor: theme.gridline }}>
-            <th scope="col">{labelHeader || 'Row'}</th>
-            {colorLabel && <th scope="col">{colorLabel}</th>}
-            {sizeLabel && <th scope="col">{sizeLabel}</th>}
-            {detailNames.map((name) => (
-              <th scope="col" key={name}>
-                {name}
-              </th>
-            ))}
+            <th scope="col">{nameHeader || 'Name'}</th>
+            <th scope="col">{territoryHeader || 'Territory'}</th>
             <th scope="col">Latitude</th>
             <th scope="col">Longitude</th>
           </tr>
         </thead>
         <tbody>
           {points.map((point) => {
+            const style = scale.styleFor(point.territory);
             const isSelected = point.rowIndex === selectedRow;
-            const swatch =
-              point.colorValue !== null && colorExtent
-                ? theme.ramp[bucketIndex(point.colorValue, colorExtent, theme.ramp.length)]
-                : theme.neutralMark;
             return (
               <tr
                 key={point.rowIndex}
-                onClick={() => onSelect(point)}
+                onClick={() => onSelect(point.rowIndex)}
                 className={isSelected ? 'row-selected' : undefined}
                 style={{
                   color: theme.textPrimary,
@@ -66,24 +52,18 @@ export function TableView({
                 }}
               >
                 <th scope="row" style={{ color: theme.textPrimary }}>
+                  {point.name || `Row ${point.rowIndex + 1}`}
+                </th>
+                <td>
                   <span
                     className="row-dot"
-                    style={{ background: swatch, borderColor: theme.surface }}
+                    style={{ background: style.color, borderColor: theme.surface }}
                     aria-hidden="true"
                   />
-                  {point.label || `Row ${point.rowIndex + 1}`}
-                </th>
-                {colorLabel && (
-                  <td>{point.colorValue === null ? '—' : formatCompact(point.colorValue)}</td>
-                )}
-                {sizeLabel && (
-                  <td>{point.sizeValue === null ? '—' : formatCompact(point.sizeValue)}</td>
-                )}
-                {point.details.map((detail) => (
-                  <td key={detail.name}>{detail.value || '—'}</td>
-                ))}
-                <td>{point.lat.toFixed(5)}</td>
-                <td>{point.lon.toFixed(5)}</td>
+                  {point.territory || '—'}
+                </td>
+                <td>{point.lat.toFixed(6)}</td>
+                <td>{point.lng.toFixed(6)}</td>
               </tr>
             );
           })}

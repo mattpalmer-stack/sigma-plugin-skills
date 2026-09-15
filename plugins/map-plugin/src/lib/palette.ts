@@ -1,33 +1,34 @@
 /**
- * Colour tokens for the map.
+ * Colour tokens.
  *
- * Every value here is copied from the validated reference palette — nothing is
- * invented or interpolated. The sequential hue is blue; the steps below are the
- * published 100–700 ramp.
+ * Every value is copied from the validated reference palette — nothing is
+ * invented or interpolated. The categorical slots are used in their published
+ * fixed order and are never cycled: past the last slot, territories fold into
+ * a neutral "Other" rather than repeating a hue.
  */
-
-/** The published blue sequential ramp, light → dark. */
-export const BLUE = {
-  100: '#cde2fb',
-  150: '#b7d3f6',
-  200: '#9ec5f4',
-  250: '#86b6ef',
-  300: '#6da7ec',
-  350: '#5598e7',
-  400: '#3987e5',
-  450: '#2a78d6',
-  500: '#256abf',
-  550: '#1c5cab',
-  600: '#184f95',
-  650: '#104281',
-  700: '#0d366b',
-} as const;
 
 export type ThemeMode = 'light' | 'dark';
 
+/**
+ * The eight categorical slots, in their published order.
+ *
+ * Only the first THREE clear the all-pairs gates that a map has to meet — on a
+ * map any two markers can end up side by side, so every pair must be separable,
+ * not just the pairs that happen to be adjacent in a legend. Slots 4–8 are still
+ * used, but the plugin adds a letter badge to every marker once more than three
+ * territories are on screen, so identity never rests on hue alone.
+ */
+export const CATEGORICAL: Record<ThemeMode, readonly string[]> = {
+  light: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'],
+  dark: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'],
+};
+
+/** Colour count past which markers pick up a secondary channel. */
+export const SAFE_COLOR_ONLY_COUNT = 3;
+
 export interface Theme {
   mode: ThemeMode;
-  /** Chart surface — also the colour of the ring drawn around each marker. */
+  /** Chart surface — also the ring drawn around each marker. */
   surface: string;
   plane: string;
   textPrimary: string;
@@ -35,24 +36,12 @@ export interface Theme {
   textMuted: string;
   gridline: string;
   border: string;
-  /** Marker ramp, low magnitude → high magnitude. */
-  ramp: readonly string[];
-  /** Fill for markers when no "colour by" column is configured. */
+  categorical: readonly string[];
+  /** Fill for the folded "Other" bucket and for rows with no territory. */
   neutralMark: string;
-  /** Ring colour marking the selected point. */
+  /** Ring marking the selected marker. */
   selection: string;
 }
-
-/**
- * Markers sit on top of a basemap rather than on bare surface, so the ramp is
- * treated as *ordinal* rather than continuous: the step nearest the surface has
- * to stay legible. On light that means starting no lighter than step 250; on
- * dark, going no darker than step 600. Both ends respect those floors.
- */
-const LIGHT_RAMP = [BLUE[250], BLUE[350], BLUE[450], BLUE[550], BLUE[650]] as const;
-
-/** Dark mode is a selected set of steps from the same ramp, not a flipped one. */
-const DARK_RAMP = [BLUE[550], BLUE[450], BLUE[350], BLUE[250], BLUE[150]] as const;
 
 export const LIGHT_THEME: Theme = {
   mode: 'light',
@@ -63,8 +52,8 @@ export const LIGHT_THEME: Theme = {
   textMuted: '#898781',
   gridline: '#e1e0d9',
   border: 'rgba(11,11,11,0.10)',
-  ramp: LIGHT_RAMP,
-  neutralMark: BLUE[450],
+  categorical: CATEGORICAL.light,
+  neutralMark: '#898781',
   selection: '#0b0b0b',
 };
 
@@ -77,8 +66,8 @@ export const DARK_THEME: Theme = {
   textMuted: '#898781',
   gridline: '#2c2c2a',
   border: 'rgba(255,255,255,0.10)',
-  ramp: DARK_RAMP,
-  neutralMark: BLUE[350],
+  categorical: CATEGORICAL.dark,
+  neutralMark: '#898781',
   selection: '#ffffff',
 };
 

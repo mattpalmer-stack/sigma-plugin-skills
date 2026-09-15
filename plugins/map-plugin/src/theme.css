@@ -1,7 +1,7 @@
 /*
  * Chrome for the plugin. Colours come from the theme object in TS rather than
- * from CSS variables here, because the basemap choice picks the token set at
- * runtime; this file owns layout, type, and the Leaflet overrides.
+ * from CSS variables, because the chosen map style picks the token set at
+ * runtime; this file owns layout, type, and the Google Maps overrides.
  */
 
 *,
@@ -48,26 +48,6 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ghost-button {
-  font: inherit;
-  font-size: 12px;
-  padding: 4px 10px;
-  background: transparent;
-  border: 1px solid;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.ghost-button:hover {
-  opacity: 0.75;
-}
-
 .view-switch {
   display: inline-flex;
   border: 1px solid;
@@ -92,6 +72,7 @@ body {
   min-height: 0;
 }
 
+.map-shell,
 .map-canvas {
   position: absolute;
   inset: 0;
@@ -99,24 +80,38 @@ body {
   height: 100%;
 }
 
+.map-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.map-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
 /* ---------- Legend ---------- */
 
 .legend {
   position: absolute;
   left: 12px;
-  bottom: 24px;
-  z-index: 500;
-  display: flex;
-  gap: 18px;
+  bottom: 28px;
+  z-index: 5;
+  max-height: calc(100% - 56px);
+  overflow-y: auto;
   padding: 10px 12px;
   border: 1px solid;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  pointer-events: auto;
-}
-
-.legend-block {
-  min-width: 108px;
 }
 
 .legend-title {
@@ -126,36 +121,46 @@ body {
   margin-bottom: 6px;
 }
 
-.legend-ramp {
+.legend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.legend-list li {
   display: flex;
-  gap: 2px; /* surface gap keeps adjacent fills separable */
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
 }
 
-.legend-swatch {
-  flex: 1 1 0;
-  height: 10px;
-  border-radius: 2px;
-}
-
-.legend-sizes {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 26px;
-}
-
-.legend-bubble {
-  display: inline-block;
+.legend-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
   border-radius: 50%;
-  border: 2px solid;
+  border: 2px solid; /* surface ring, matching the markers */
+  opacity: 0.9;
 }
 
-.legend-scale {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
+.legend-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  mix-blend-mode: difference; /* stays legible on any slot colour */
+}
+
+.legend-name {
+  flex: 1 1 auto;
+}
+
+.legend-count {
   font-variant-numeric: tabular-nums;
-  margin-top: 4px;
+  font-size: 11px;
 }
 
 /* ---------- Table view ---------- */
@@ -199,12 +204,12 @@ body {
   filter: brightness(0.97);
 }
 
-.data-table td {
-  font-variant-numeric: tabular-nums;
-}
-
 .data-table tbody th {
   font-weight: 500;
+}
+
+.data-table td:nth-child(n + 3) {
+  font-variant-numeric: tabular-nums;
 }
 
 .row-dot {
@@ -214,7 +219,6 @@ body {
   border-radius: 50%;
   border: 2px solid;
   margin-right: 8px;
-  vertical-align: baseline;
 }
 
 .row-selected {
@@ -254,12 +258,39 @@ body {
   margin-top: 4px;
 }
 
-/* ---------- Tooltip & popup content ---------- */
+/* ---------- Popup ---------- */
+
+.map-popup {
+  min-width: 170px;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
 
 .popup-title {
   font-weight: 600;
   font-size: 13px;
-  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.popup-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.popup-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid;
+  flex: 0 0 auto;
+}
+
+.popup-rule {
+  height: 1px;
+  margin: 8px 0 6px;
 }
 
 .popup-row {
@@ -279,57 +310,31 @@ body {
   text-align: right;
 }
 
-.popup-rule {
-  height: 1px;
-  margin: 6px 0;
-}
+/* ---------- Google Maps overrides ---------- */
 
-/* ---------- Leaflet overrides ---------- */
-
-.leaflet-container {
-  font-family: inherit;
-  font-size: 12px;
-  background: transparent;
-}
-
-.map-tooltip-shell,
-.map-popup-shell .leaflet-popup-content-wrapper {
+/* The default info window is a white card with its own padding and close
+   button; strip it back so the themed popup content is what shows. */
+.gm-style .gm-style-iw-c {
+  padding: 10px 12px !important;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  padding: 8px 10px;
 }
 
-.map-tooltip-shell.light,
-.map-popup-shell.light .leaflet-popup-content-wrapper,
-.map-popup-shell.light .leaflet-popup-tip {
-  background: #fcfcfb;
-  border: 1px solid rgba(11, 11, 11, 0.1);
-  color: #0b0b0b;
+.gm-style .gm-style-iw-d {
+  overflow: hidden !important;
+  padding: 0 !important;
 }
 
-.map-tooltip-shell.dark,
-.map-popup-shell.dark .leaflet-popup-content-wrapper,
-.map-popup-shell.dark .leaflet-popup-tip {
+.gm-style .map-popup.dark {
+  color: #fff;
+}
+
+/* Dark map style: repaint the info window shell to match. */
+.gm-style .gm-style-iw-c:has(.map-popup.dark),
+.gm-style .gm-style-iw-tc:has(+ div .map-popup.dark) {
   background: #1a1a19;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #ffffff;
 }
 
-.map-tooltip-shell::before {
-  display: none; /* Leaflet's default arrow does not match the themed border */
-}
-
-.map-popup-shell .leaflet-popup-content {
-  margin: 0;
-  min-width: 160px;
-}
-
-.leaflet-control-attribution {
-  font-size: 10px;
-  background: rgba(252, 252, 251, 0.8) !important;
-}
-
-.map-tooltip-shell.dark ~ .leaflet-control-attribution,
-.leaflet-container .leaflet-control-attribution a {
-  color: #52514e;
+.gm-style .gm-style-iw-c:has(.map-popup.dark) button span {
+  background-color: #c3c2b7 !important;
 }
