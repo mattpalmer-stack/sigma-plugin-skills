@@ -1,0 +1,8 @@
+# Deploys the plugin in net-zero-plugin/ (repo root also holds the skill docs).
+[build]
+  base = "net-zero-plugin"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"

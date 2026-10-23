@@ -31,3 +31,13 @@ Switching scenario or country is pure client state; no re-fetch.
 - A scenario is skipped while any country it has intensity for lacks one of the 15 years (mid-write). A country absent from a scenario entirely shows "—" and its line is hidden.
 - A gap that rounds to 0.00 counts as on the pathway and is shown as `0.00` (no sign, green).
 - Dependencies are pinned to versions older than 3 days (org rule); `@sigmacomputing/*` is exempt.
+
+## Deploy to Netlify
+
+`netlify.toml` at the repo root sets base `net-zero-plugin`, build `npm run build`, publish `dist`.
+
+1. Netlify > Add new site > Import an existing project > pick this repo and branch.
+2. Leave the detected settings (they come from `netlify.toml`) and deploy.
+3. In Sigma: Administration > Plugins > Add Plugin, URL = your `https://<site>.netlify.app`.
+
+Or from the CLI: `cd net-zero-plugin && npx netlify-cli deploy --build --prod`.
