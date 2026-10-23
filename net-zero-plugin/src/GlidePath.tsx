@@ -18,7 +18,6 @@ import {
   ABOVE_FILL_OPACITY,
   BAND_OPACITY,
   CHART_HEIGHT,
-  FALLBACK_SCENARIO_COLOR,
   hexToRgba,
   type Palette,
 } from './theme.ts';
@@ -28,6 +27,7 @@ ChartJS.register(Filler, LinearScale, LineElement, PointElement, Tooltip);
 interface Props {
   view: CountryView;
   scenario: ScenarioData;
+  scenarioColor: string;
   countries: string[];
   selected: string;
   onSelect: (c: string) => void;
@@ -37,8 +37,8 @@ interface Props {
 const pts = (years: number[], vals: (number | null)[]) =>
   years.map((x, i) => ({ x, y: vals[i] as number | null }));
 
-export default function GlidePath({ view, scenario, countries, selected, onSelect, palette: p }: Props) {
-  const scColor = scenario.color || FALLBACK_SCENARIO_COLOR;
+export default function GlidePath({ view, scenario, scenarioColor, countries, selected, onSelect, palette: p }: Props) {
+  const scColor = scenarioColor;
 
   const data = useMemo(() => {
     const common = { clip: false as const, spanGaps: false };

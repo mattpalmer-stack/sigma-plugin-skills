@@ -11,7 +11,6 @@ function row(o: Partial<RawRow> & Pick<RawRow, 'scenario_id' | 'metric' | 'year'
     ...base,
     run_id: `${run}_${o.scenario_id}`,
     scenario_name: o.scenario_id === 'S0' ? 'Baseline' : 'Adjunct_swap',
-    chart_color: o.scenario_id === 'S0' ? '#1F1F1E' : '#C8962E',
     ...o,
   } as RawRow;
 }

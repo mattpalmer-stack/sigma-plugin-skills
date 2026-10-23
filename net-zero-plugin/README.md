@@ -15,7 +15,7 @@ Register in Sigma: **Administration > Plugins > Add Plugin**, URL `http://localh
 
 ## Editor panel
 
-Required text: `run_id`, `scenario_id`, `scenario_name`, `chart_color`, `country`, `ingredient`, `metric`. Required number: `year`, `p10`, `p50`, `p90`.
+Required text: `run_id`, `scenario_id`, `scenario_name`, `country`, `ingredient`, `metric`. Required number: `year`, `p10`, `p50`, `p90`.
 Optional number: `sort_order` (country chip order), `volume_mhl` (million hl; enables the kt figure in the status line, read from the 2040 intensity rows).
 
 ## Layout

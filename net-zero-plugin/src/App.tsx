@@ -6,7 +6,7 @@ import {
   useElementData,
 } from '@sigmacomputing/plugin';
 import { buildModel, countryView, kpis, type RawRow } from './model.ts';
-import { DARK, DEFAULT_COUNTRY, LIGHT, cssVars } from './theme.ts';
+import { DARK, DEFAULT_COUNTRY, LIGHT, assignScenarioColors, cssVars } from './theme.ts';
 import Header from './Header.tsx';
 import KpiCards from './KpiCards.tsx';
 import GlidePath from './GlidePath.tsx';
@@ -36,7 +36,6 @@ client.config.configureEditorPanel([
   colText('run_id', 'run_id'),
   colText('scenario_id', 'scenario_id'),
   colText('scenario_name', 'scenario_name'),
-  colText('chart_color', 'chart_color'),
   colNum('year', 'year'),
   colText('country', 'country'),
   colText('ingredient', 'ingredient'),
@@ -49,7 +48,7 @@ client.config.configureEditorPanel([
 ]);
 
 const REQUIRED = [
-  'run_id', 'scenario_id', 'scenario_name', 'chart_color', 'year',
+  'run_id', 'scenario_id', 'scenario_name', 'year',
   'country', 'ingredient', 'metric', 'p10', 'p50', 'p90',
 ] as const;
 
@@ -98,7 +97,6 @@ export default function App() {
         run_id: str(c.run_id![i]),
         scenario_id: str(c.scenario_id![i]),
         scenario_name: str(c.scenario_name![i]),
-        chart_color: str(c.chart_color![i]),
         year: Number(c.year![i]),
         country: str(c.country![i]),
         ingredient: str(c.ingredient![i]),
@@ -138,6 +136,7 @@ export default function App() {
     model.countries.find((c) => c.replace(/_/g, ' ') === DEFAULT_COUNTRY) ??
     model.countries[0];
 
+  const scenarioColor = assignScenarioColors(model.scenarios.map((s) => s.id), dark)[scenario.id];
   const views = model.countries.map((c) => countryView(model, scenario, c));
   const selectedView = views.find((v) => v.country === country)!;
 
@@ -148,6 +147,7 @@ export default function App() {
       <GlidePath
         view={selectedView}
         scenario={scenario}
+        scenarioColor={scenarioColor}
         countries={model.countries}
         selected={country}
         onSelect={setCountryPick}

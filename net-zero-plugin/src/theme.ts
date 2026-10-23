@@ -4,7 +4,33 @@
 
 export const BRAND_GOLD = '#C8962E';
 export const BRAND_INK = '#1F1F1E';
-export const FALLBACK_SCENARIO_COLOR = BRAND_GOLD;
+
+// Scenario line colors are assigned automatically (no column to map). Each
+// scenario gets a stable pseudo-random pick from this palette, keyed on its
+// scenario_id, so S1 keeps its color across reloads and no two scenarios on
+// screen share one. Baseline, pathway and above-pathway colors are fixed below.
+export const SCENARIO_COLORS_LIGHT = ['#C8962E', '#B5651D', '#5B7C99', '#8C5A7A', '#6F8F3D', '#9A7B4F', '#3E8E86', '#A8473F'];
+export const SCENARIO_COLORS_DARK = ['#D9A93F', '#D98A4A', '#8FB0CC', '#C48FB0', '#A3C46B', '#C4A777', '#6FC1B8', '#E07A70'];
+
+const hashId = (id: string): number => {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  return h >>> 0;
+};
+
+/** id -> color. Hash picks the start slot; collisions probe to the next free one. */
+export function assignScenarioColors(ids: string[], dark: boolean): Record<string, string> {
+  const palette = dark ? SCENARIO_COLORS_DARK : SCENARIO_COLORS_LIGHT;
+  const taken = new Set<number>();
+  const out: Record<string, string> = {};
+  for (const id of ids) {
+    let i = hashId(id) % palette.length;
+    for (let n = 0; n < palette.length && taken.has(i); n++) i = (i + 1) % palette.length;
+    taken.add(i);
+    out[id] = palette[i];
+  }
+  return out;
+}
 
 export const DEFAULT_COUNTRY = 'Brazil'; // falls back to the first country
 export const DROPDOWN_THRESHOLD = 4; // more scenarios than this -> dropdown

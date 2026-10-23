@@ -10,7 +10,6 @@ export interface RawRow {
   run_id: string;
   scenario_id: string;
   scenario_name: string;
-  chart_color: string;
   year: number;
   country: string;
   ingredient: string;
@@ -31,7 +30,6 @@ export interface Band {
 export interface ScenarioData {
   id: string;
   name: string; // display name, spaces instead of underscores
-  color: string;
   num: number;
   runId: string;
   intensity: Record<string, Record<number, Band>>; // country -> year -> band
@@ -127,7 +125,6 @@ export function buildModel(rows: RawRow[]): Model {
       s = {
         id: r.scenario_id,
         name: label(r.scenario_name || ''),
-        color: r.chart_color || '',
         num: scenarioNum(r.scenario_id),
         runId: r.run_id,
         intensity: {},
@@ -139,7 +136,6 @@ export function buildModel(rows: RawRow[]): Model {
       byScenario.set(r.scenario_id, s);
     }
     if (!s.name && r.scenario_name) s.name = label(r.scenario_name);
-    if (!s.color && r.chart_color) s.color = r.chart_color;
     const p50 = r.p50;
     if (p50 === null) continue;
     if (r.metric === 'emissions_kt') {
